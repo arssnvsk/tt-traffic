@@ -176,11 +176,19 @@
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Подсчёт кликов по ссылкам (работает, если в Vercel включена Web Analytics)
+    // Подсчёт кликов по кнопкам: свой счётчик (/api/click → страница /stats)
+    // и событие для Vercel Analytics (видно только на тарифе Pro)
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     document.querySelector('.links').addEventListener('click', function (e) {
       var a = e.target.closest('.link');
       if (!a) return;
+      var url = '/api/click?b=' + encodeURIComponent(a.dataset.name);
+      try {
+        // sendBeacon доставляет запрос, даже если браузер уже уходит со страницы
+        if (!(navigator.sendBeacon && navigator.sendBeacon(url))) {
+          fetch(url, { method: 'POST', keepalive: true }).catch(function () {});
+        }
+      } catch (err) {}
       try { window.va('event', { name: 'click_' + a.dataset.name }); } catch (err) {}
     });
 

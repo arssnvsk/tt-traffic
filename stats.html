@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Статистика</title>
+  <meta name="theme-color" content="#0b0b12">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <style>
+    :root {
+      --bg: #0b0b12;
+      --card: rgba(255, 255, 255, 0.06);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text: #f5f5f7;
+      --muted: #a1a1b5;
+      --vpn: #2aabee;
+      --site: #ff6a3d;
+      --views: #25f4ee;
+      --danger: #fe2c55;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: max(24px, env(safe-area-inset-top)) 16px 40px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    button {
+      font: inherit; color: var(--text); cursor: pointer;
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 10px; padding: 8px 12px;
+    }
+    button:hover { background: rgba(255,255,255,.1); }
+    .ghost { font-size: 13px; color: var(--muted); }
+
+    .tabs { display: flex; gap: 6px; }
+    .tabs button { flex: 1; padding: 8px 4px; font-size: 14px; }
+    .tabs button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    @media (min-width: 600px) { .cards { grid-template-columns: repeat(4, 1fr); } }
+    .card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 14px;
+    }
+    .card .label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .card .num { font-size: 28px; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    .panel { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    th, td { padding: 8px 6px; text-align: right; white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    th:first-child, td:first-child { text-align: left; }
+    tbody tr + tr td { border-top: 1px solid rgba(255,255,255,.06); }
+    td.bar { width: 40%; min-width: 90px; }
+    .barline { height: 8px; border-radius: 4px; background: var(--views); opacity: .8; }
+    @media (max-width: 480px) { .bar { display: none; } th, td { padding: 8px 4px; } }
+    .zero { color: rgba(255,255,255,.25); }
+
+    form.login { max-width: 340px; margin: 18vh auto 0; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+    input {
+      font: inherit; color: var(--text); background: var(--card);
+      border: 1px solid var(--card-border); border-radius: 10px; padding: 12px;
+    }
+    .error { color: var(--danger); font-size: 14px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <form class="login" id="login" hidden>
+    <h1>📊 Статистика</h1>
+    <input type="password" id="pw" placeholder="Пароль" autocomplete="current-password" required>
+    <button type="submit">Войти</button>
+    <p class="error" id="login-error"></p>
+  </form>
+
+  <main class="wrap" id="app" hidden>
+    <div class="top">
+      <h1>📊 Статистика</h1>
+      <button class="ghost" id="logout" type="button">Выйти</button>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button type="button" data-days="1">Сегодня</button>
+      <button type="button" data-days="7">7 дней</button>
+      <button type="button" data-days="30">30 дней</button>
+      <button type="button" data-days="90">90 дней</button>
+    </div>
+
+    <p class="error" id="error" hidden></p>
+
+    <section class="cards" id="cards"></section>
+
+    <section>
+      <h2>По странам</h2>
+      <div class="panel"><table id="by-country"></table></div>
+    </section>
+
+    <section>
+      <h2>По дням</h2>
+      <div class="panel"><table id="by-day"></table></div>
+    </section>
+
+    <p class="muted">Сутки считаются по Минску/Москве. Боты и превью ссылок не учитываются.
+      «Уникальные» — разные IP-адреса.</p>
+  </main>
+
+  <script>
+    var COUNTRY = { BY: '🇧🇾 Беларусь', RU: '🇷🇺 Россия', UA: '🇺🇦 Украина', UZ: '🇺🇿 Узбекистан',
+      KZ: '🇰🇿 Казахстан', PL: '🇵🇱 Польша', DE: '🇩🇪 Германия', LT: '🇱🇹 Литва', LV: '🇱🇻 Латвия',
+      US: '🇺🇸 США', NL: '🇳🇱 Нидерланды', GE: '🇬🇪 Грузия', AM: '🇦🇲 Армения', KG: '🇰🇬 Киргизия',
+      TR: '🇹🇷 Турция', XX: '❓ Не определена' };
+    var MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+    var state = { days: 7, pw: '' };
+    try { state.pw = localStorage.getItem('stats_pw') || ''; } catch (e) {}
+    try { state.days = Number(localStorage.getItem('stats_days')) || 7; } catch (e) {}
+
+    var $ = function (id) { return document.getElementById(id); };
+    var fmt = function (n) { return Number(n || 0).toLocaleString('ru-RU'); };
+    var pct = function (a, b) { return b ? Math.round((a / b) * 1000) / 10 + '%' : '—'; };
+    var cell = function (n) { return n ? fmt(n) : '<span class="zero">0</span>'; };
+    var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+    var dateLabel = function (iso) { var p = iso.split('-'); return Number(p[2]) + ' ' + MONTHS[Number(p[1]) - 1]; };
+
+    function showLogin(msg) {
+      $('app').hidden = true;
+      $('login').hidden = false;
+      $('login-error').textContent = msg || '';
+      $('pw').focus();
+    }
+
+    function load() {
+      document.querySelectorAll('#tabs button').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(Number(b.dataset.days) === state.days));
+      });
+      fetch('/api/stats?days=' + state.days, { headers: { Authorization: 'Bearer ' + state.pw }, cache: 'no-store' })
+        .then(function (r) { return r.json().then(function (body) { return { status: r.status, body: body }; }); })
+        .then(function (res) {
+          if (res.status === 401) {
+            try { localStorage.removeItem('stats_pw'); } catch (e) {}
+            return showLogin(state.pw ? 'Неверный пароль' : '');
+          }
+          $('login').hidden = true;
+          $('app').hidden = false;
+          if (res.status !== 200) {
+            $('error').hidden = false;
+            $('error').textContent = res.body.error || 'Ошибка ' + res.status;
+            return;
+          }
+          $('error').hidden = true;
+          try { localStorage.setItem('stats_pw', state.pw); } catch (e) {}
+          render(res.body);
+        })
+        .catch(function () {
+          $('app').hidden = false;
+          $('error').hidden = false;
+          $('error').textContent = 'Не удалось загрузить статистику';
+        });
+    }
+
+    function render(data) {
+      var t = data.totals;
+      var clicks = t.vpn + t.site;
+      $('cards').innerHTML = [
+        { label: 'Заходы', color: 'var(--views)', num: t.unique, sub: fmt(t.views) + ' открытий страницы' },
+        { label: 'Кликнули VPN', color: 'var(--vpn)', num: t.uniqueVpn, sub: fmt(t.vpn) + ' кликов · ' + pct(t.uniqueVpn, t.unique) },
+        { label: 'Кликнули сайт', color: 'var(--site)', num: t.uniqueSite, sub: fmt(t.site) + ' кликов · ' + pct(t.uniqueSite, t.unique) },
+        { label: 'Всего кликов', color: 'var(--text)', num: clicks, sub: pct(clicks, t.views) + ' от открытий' }
+      ].map(function (c) {
+        return '<div class="card"><div class="label"><span class="dot" style="background:' + c.color + '"></span>' +
+          c.label + '</div><div class="num">' + fmt(c.num) + '</div><div class="muted">' + c.sub + '</div></div>';
+      }).join('');
+
+      var codes = Object.keys(data.countries).sort(function (a, b) {
+        return data.countries[b].views - data.countries[a].views;
+      });
+      $('by-country').innerHTML = '<thead><tr><th>Страна</th><th>Открытия</th><th>VPN</th><th>Сайт</th></tr></thead><tbody>' +
+        (codes.length ? codes.map(function (code) {
+          var r = data.countries[code];
+          return '<tr><td>' + esc(COUNTRY[code] || code) + '</td><td>' + cell(r.views) + '</td><td>' + cell(r.vpn) +
+            '</td><td>' + cell(r.site) + '</td></tr>';
+        }).join('') : '<tr><td colspan="4" class="muted">Пока нет данных</td></tr>') + '</tbody>';
+
+      var max = Math.max.apply(null, data.byDay.map(function (d) { return d.views; }).concat(1));
+      $('by-day').innerHTML = '<thead><tr><th>День</th><th class="bar"></th><th>Уник.</th><th>Открытия</th><th>VPN</th><th>Сайт</th></tr></thead><tbody>' +
+        data.byDay.map(function (d) {
+          return '<tr><td>' + dateLabel(d.date) + '</td><td class="bar"><div class="barline" style="width:' +
+            (d.views ? Math.max(2, (d.views / max) * 100) : 0) + '%"></div></td><td>' + cell(d.unique) + '</td><td>' +
+            cell(d.views) + '</td><td>' + cell(d.vpn) + '</td><td>' + cell(d.site) + '</td></tr>';
+        }).join('') + '</tbody>';
+    }
+
+    $('login').addEventListener('submit', function (e) {
+      e.preventDefault();
+      state.pw = $('pw').value;
+      load();
+    });
+    $('logout').addEventListener('click', function () {
+      state.pw = '';
+      try { localStorage.removeItem('stats_pw'); } catch (e) {}
+      showLogin();
+    });
+    $('tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      state.days = Number(b.dataset.days);
+      try { localStorage.setItem('stats_days', String(state.days)); } catch (e) {}
+      load();
+    });
+
+    if (state.pw) load(); else showLogin();
+  </script>
+</body>
+</html>
