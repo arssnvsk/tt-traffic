@@ -6,6 +6,10 @@
 const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// Кнопки на странице (data-name в index.html). Новую кнопку надо добавить сюда,
+// иначе её клики не будут считаться. Название для /stats — в BUTTON_INFO в stats.html.
+const BUTTONS = ['vpn', 'love', 'site'];
+
 const KEEP_SECONDS = 400 * 24 * 60 * 60; // храним статистику ~13 месяцев
 const TIMEZONE = 'Europe/Minsk';          // сутки считаем по Минску/Москве (UTC+3)
 
@@ -79,4 +83,4 @@ function sendJson(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-module.exports = { redis, hasRedis, day, country, track, sendJson };
+module.exports = { BUTTONS, redis, hasRedis, day, country, track, sendJson };

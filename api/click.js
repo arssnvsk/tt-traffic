@@ -1,8 +1,6 @@
-// Считает клик по кнопке. Страница шлёт POST /api/click?b=vpn (или b=site).
+// Считает клик по кнопке. Страница шлёт POST /api/click?b=vpn (или love, site).
 
-const { track, sendJson } = require('./_lib');
-
-const BUTTONS = ['vpn', 'site'];
+const { track, sendJson, BUTTONS } = require('./_lib');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST only' });

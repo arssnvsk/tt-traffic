@@ -2,9 +2,8 @@
 // GET /api/stats?days=7   (заголовок Authorization: Bearer <пароль>)
 
 const crypto = require('crypto');
-const { redis, hasRedis, day, sendJson } = require('./_lib');
+const { redis, hasRedis, day, sendJson, BUTTONS } = require('./_lib');
 
-const BUTTONS = ['vpn', 'site'];
 const MAX_DAYS = 90;
 
 function passwordOk(req) {
@@ -30,8 +29,11 @@ function toObject(flat) {
   return o;
 }
 
+// { views: 0, vpn: 0, love: 0, site: 0 }
 function emptyRow() {
-  return { views: 0, vpn: 0, site: 0 };
+  const row = { views: 0 };
+  BUTTONS.forEach((b) => { row[b] = 0; });
+  return row;
 }
 
 module.exports = async function handler(req, res) {
@@ -64,7 +66,7 @@ module.exports = async function handler(req, res) {
 
   const days = [];
   const countries = {};
-  const totals = { views: 0, vpn: 0, site: 0 };
+  const totals = emptyRow();
 
   dates.forEach((d, i) => {
     const counters = toObject(results[i * 2]);
@@ -86,8 +88,9 @@ module.exports = async function handler(req, res) {
 
   const tail = results.slice(dates.length * 2);
   totals.unique = Number(tail[0]) || 0;
-  totals.uniqueVpn = Number(tail[1]) || 0;
-  totals.uniqueSite = Number(tail[2]) || 0;
+  // Уникальные кликнувшие по каждой кнопке: { vpn: 3, love: 1, site: 2 }
+  totals.uniqueClicks = {};
+  BUTTONS.forEach((b, i) => { totals.uniqueClicks[b] = Number(tail[i + 1]) || 0; });
 
-  sendJson(res, 200, { days: n, from: dates[dates.length - 1], to: dates[0], totals, countries, byDay: days });
+  sendJson(res, 200, { days: n, from: dates[dates.length - 1], to: dates[0], buttons: BUTTONS, totals, countries, byDay: days });
 };

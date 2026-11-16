@@ -97,6 +97,73 @@
 
     .link.vpn .icon  { background: linear-gradient(135deg, #2aabee, #1c7fd6); }
     .link.site .icon { background: linear-gradient(135deg, #fe2c55, #ff8a00); }
+    .link.love .icon { background: linear-gradient(135deg, #ff4f9a, #b44dff); }
+
+    /* Подсказка сверху во встроенном браузере TikTok/Instagram */
+    .inapp-hint {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(37, 244, 238, 0.1);
+      border: 1px solid rgba(37, 244, 238, 0.35);
+      font-size: 14px; line-height: 1.4;
+    }
+    .inapp-hint b { white-space: nowrap; }
+    .inapp-hint .up { flex: none; font-size: 22px; animation: nudge 1.2s ease-in-out infinite; }
+    @keyframes nudge { 50% { transform: translate(3px, -3px); } }
+
+    /* Попап «ссылка скопирована» */
+    .sheet-backdrop {
+      position: fixed; inset: 0; z-index: 10;
+      background: rgba(0, 0, 0, 0.65);
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: fade .2s ease both;
+    }
+    .sheet {
+      width: 100%; max-width: 440px;
+      background: #16161f;
+      border: 1px solid var(--card-border); border-bottom: 0;
+      border-radius: 22px 22px 0 0;
+      padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 14px;
+      animation: up .25s ease both;
+      position: relative;
+    }
+    .sheet h2 { font-size: 20px; padding-right: 36px; }
+    .sheet p { color: var(--muted); font-size: 15px; line-height: 1.45; }
+    .sheet .close {
+      position: absolute; top: 14px; right: 14px;
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 0; background: rgba(255,255,255,0.08); color: var(--text);
+      font-size: 18px; cursor: pointer;
+    }
+    .steps { list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: s; }
+    .steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.4; }
+    .steps li::before {
+      counter-increment: s; content: counter(s);
+      flex: none; width: 24px; height: 24px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff;
+    }
+    .copy-row { display: flex; gap: 8px; }
+    .copy-row input {
+      flex: 1; min-width: 0;
+      font: inherit; font-size: 14px; color: var(--text);
+      background: rgba(255,255,255,0.06); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 12px;
+    }
+    .btn {
+      display: block; text-align: center; text-decoration: none; cursor: pointer;
+      font: inherit; font-weight: 650; font-size: 16px;
+      padding: 14px; border-radius: 14px; border: 0;
+      color: #fff; background: linear-gradient(135deg, var(--accent-2), #ff8a00);
+    }
+    .btn.secondary { background: rgba(255,255,255,0.08); color: var(--text); font-weight: 600; font-size: 15px; }
+    .copy-row .btn { flex: none; padding: 12px 14px; font-size: 14px; }
+    .open-here { text-align: center; color: var(--muted); font-size: 14px; }
+    [hidden] { display: none !important; }
+    @keyframes fade { from { opacity: 0; } }
+    @keyframes up { from { transform: translateY(100%); } }
 
     /* главная кнопка — с переливающейся обводкой */
     .link.featured { border-color: transparent; }
@@ -135,6 +202,12 @@
 </head>
 <body>
   <main class="wrap">
+    <!-- Видна только во встроенном браузере TikTok/Instagram и т.п. -->
+    <div class="inapp-hint" id="inapp-hint" hidden>
+      <span>Ссылки не открываются? Нажми <b>⋯</b> вверху справа → <b>«Открыть в браузере»</b></span>
+      <span class="up">↗️</span>
+    </div>
+
     <header>
       <!-- Чтобы поставить своё фото: положи avatar.jpg рядом с index.html
            и замени <span>😎</span> на <img src="avatar.jpg" alt=""> -->
@@ -155,6 +228,15 @@
         <span class="arrow">›</span>
       </a>
 
+      <a class="link love" href="https://t.me/gimernibot?start=p_artem"
+         target="_blank" rel="noopener" data-name="love">
+        <span class="icon">💘</span>
+        <span class="text">
+          <span class="title">Знакомства в Telegram</span>
+          <span class="sub">Тут я нашла свою любовь ❤️</span>
+        </span>
+        <span class="arrow">›</span>
+      </a>
     </nav>
 
     <!-- Кнопка сайта. Показывается только посетителям из Беларуси, России, Украины и Узбекистана,
@@ -173,11 +255,112 @@
     <footer>© <span id="y"></span></footer>
   </main>
 
+  <!-- Попап для встроенного браузера TikTok: копируем ссылку и объясняем, как её открыть -->
+  <div class="sheet-backdrop" id="sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <button class="close" type="button" id="sheet-close" aria-label="Закрыть">✕</button>
+      <h2 id="sheet-title">Ссылка скопирована ✅</h2>
+      <p>TikTok не пускает дальше по ссылкам. Открой её в обычном браузере, это 5 секунд:</p>
+      <ol class="steps">
+        <li><span>Нажми <b>⋯</b> в правом верхнем углу экрана</span></li>
+        <li><span>Выбери <b>«Открыть в браузере»</b></span></li>
+        <li><span>Или открой <b id="browser-name">Safari / Chrome</b> сам и вставь ссылку в адресную строку</span></li>
+      </ol>
+      <div class="copy-row">
+        <input id="sheet-url" type="text" readonly aria-label="Ссылка">
+        <button class="btn secondary" type="button" id="sheet-copy">Копировать</button>
+      </div>
+      <a class="btn" id="sheet-escape" hidden>Открыть в браузере</a>
+      <a class="open-here" id="sheet-here" target="_blank" rel="noopener">Попробовать открыть здесь</a>
+    </div>
+  </div>
+
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Подсчёт кликов по кнопкам: свой счётчик (/api/click → страница /stats)
-    // и событие для Vercel Analytics (видно только на тарифе Pro)
+    // ---- Встроенный браузер TikTok / Instagram / Facebook и т.п. ----
+    // ?inapp=1 в адресе включает этот режим вручную (для проверки с компьютера)
+    var UA = navigator.userAgent || '';
+    var IN_APP = /[?&]inapp=1/.test(location.search) ||
+      /musical_ly|bytedance|tiktok|trill_|instagram|fban|fbav|fb_iab|vkclient|snapchat|line\//i.test(UA);
+    var IS_IOS = /iphone|ipad|ipod/i.test(UA);
+    var IS_ANDROID = /android/i.test(UA);
+
+    if (IN_APP) document.getElementById('inapp-hint').hidden = false;
+
+    // Копирование: сначала современный способ, если его нет — старый через textarea
+    function legacyCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+    function copy(text) {
+      // старый способ срабатывает синхронно, пока жест пользователя ещё «свежий»
+      if (legacyCopy(text)) return Promise.resolve(true);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+        }
+      } catch (e) {}
+      return Promise.resolve(false);
+    }
+
+    // Попытка выпрыгнуть из встроенного браузера в настоящий:
+    // iOS 17+ понимает x-safari-https://, Android — intent:// с пакетом Chrome
+    function escapeUrl(url) {
+      if (IS_IOS) return 'x-safari-' + url;
+      if (IS_ANDROID) {
+        return 'intent://' + url.replace(/^https?:\/\//, '') +
+          '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
+      }
+      return '';
+    }
+
+    var sheet = document.getElementById('sheet');
+    function openSheet(url) {
+      var input = document.getElementById('sheet-url');
+      input.value = url;
+      document.getElementById('sheet-here').href = url;
+      document.getElementById('browser-name').textContent = IS_IOS ? 'Safari' : IS_ANDROID ? 'Chrome' : 'браузер';
+      var esc = escapeUrl(url);
+      var escBtn = document.getElementById('sheet-escape');
+      escBtn.hidden = !esc;
+      if (esc) {
+        escBtn.href = esc;
+        escBtn.textContent = IS_IOS ? 'Открыть в Safari' : 'Открыть в Chrome';
+      }
+      document.getElementById('sheet-copy').textContent = 'Копировать';
+      sheet.hidden = false;
+      copy(url).then(function (ok) {
+        document.getElementById('sheet-title').textContent = ok ? 'Ссылка скопирована ✅' : 'Скопируй ссылку 👇';
+      });
+    }
+    function closeSheet() { sheet.hidden = true; }
+
+    document.getElementById('sheet-close').addEventListener('click', closeSheet);
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) closeSheet(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+    document.getElementById('sheet-copy').addEventListener('click', function () {
+      var btn = this;
+      var input = document.getElementById('sheet-url');
+      copy(input.value).then(function (ok) {
+        btn.textContent = ok ? 'Готово ✓' : 'Выдели и скопируй';
+        if (!ok) { input.focus(); input.select(); }
+      });
+    });
+
+    // ---- Клики по кнопкам ----
+    // Свой счётчик (/api/click → страница /stats) и событие Vercel Analytics (видно на тарифе Pro).
+    // Во встроенном браузере вместо перехода показываем попап со скопированной ссылкой.
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     document.querySelector('.links').addEventListener('click', function (e) {
       var a = e.target.closest('.link');
@@ -190,6 +373,11 @@
         }
       } catch (err) {}
       try { window.va('event', { name: 'click_' + a.dataset.name }); } catch (err) {}
+
+      if (IN_APP) {
+        e.preventDefault();
+        openSheet(a.href);
+      }
     });
 
     // Кнопка сайта только для BY, RU, UA и UZ: сервер отдаёт ссылку под страну посетителя

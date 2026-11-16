@@ -15,6 +15,7 @@
       --text: #f5f5f7;
       --muted: #a1a1b5;
       --vpn: #2aabee;
+      --love: #ff4f9a;
       --site: #ff6a3d;
       --views: #25f4ee;
       --danger: #fe2c55;
@@ -119,7 +120,14 @@
       KZ: '🇰🇿 Казахстан', PL: '🇵🇱 Польша', DE: '🇩🇪 Германия', LT: '🇱🇹 Литва', LV: '🇱🇻 Латвия',
       US: '🇺🇸 США', NL: '🇳🇱 Нидерланды', GE: '🇬🇪 Грузия', AM: '🇦🇲 Армения', KG: '🇰🇬 Киргизия',
       TR: '🇹🇷 Турция', XX: '❓ Не определена' };
-    var MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    // Кнопки: название карточки, короткое имя для таблиц, цвет
+    var BUTTON_INFO = {
+      vpn:  { label: 'Кликнули VPN', short: 'VPN', color: 'var(--vpn)' },
+      love: { label: 'Кликнули знакомства', short: 'Знак.', color: 'var(--love)' },
+      site: { label: 'Кликнули сайт', short: 'Сайт', color: 'var(--site)' }
+    };
+    var info = function (b) { return BUTTON_INFO[b] || { label: b, short: b, color: 'var(--text)' }; };
+    var MONTHS =['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
     var state = { days: 7, pw: '' };
     try { state.pw = localStorage.getItem('stats_pw') || ''; } catch (e) {}
@@ -170,13 +178,16 @@
 
     function render(data) {
       var t = data.totals;
-      var clicks = t.vpn + t.site;
+      var buttons = data.buttons || [];
+      var btnHead = buttons.map(function (b) { return '<th>' + esc(info(b).short) + '</th>'; }).join('');
+      var btnCells = function (row) { return buttons.map(function (b) { return '<td>' + cell(row[b]) + '</td>'; }).join(''); };
+
       $('cards').innerHTML = [
-        { label: 'Заходы', color: 'var(--views)', num: t.unique, sub: fmt(t.views) + ' открытий страницы' },
-        { label: 'Кликнули VPN', color: 'var(--vpn)', num: t.uniqueVpn, sub: fmt(t.vpn) + ' кликов · ' + pct(t.uniqueVpn, t.unique) },
-        { label: 'Кликнули сайт', color: 'var(--site)', num: t.uniqueSite, sub: fmt(t.site) + ' кликов · ' + pct(t.uniqueSite, t.unique) },
-        { label: 'Всего кликов', color: 'var(--text)', num: clicks, sub: pct(clicks, t.views) + ' от открытий' }
-      ].map(function (c) {
+        { label: 'Заходы', color: 'var(--views)', num: t.unique, sub: fmt(t.views) + ' открытий страницы' }
+      ].concat(buttons.map(function (b) {
+        var u = t.uniqueClicks[b];
+        return { label: info(b).label, color: info(b).color, num: u, sub: fmt(t[b]) + ' кликов · ' + pct(u, t.unique) };
+      })).map(function (c) {
         return '<div class="card"><div class="label"><span class="dot" style="background:' + c.color + '"></span>' +
           c.label + '</div><div class="num">' + fmt(c.num) + '</div><div class="muted">' + c.sub + '</div></div>';
       }).join('');
@@ -184,19 +195,18 @@
       var codes = Object.keys(data.countries).sort(function (a, b) {
         return data.countries[b].views - data.countries[a].views;
       });
-      $('by-country').innerHTML = '<thead><tr><th>Страна</th><th>Открытия</th><th>VPN</th><th>Сайт</th></tr></thead><tbody>' +
+      $('by-country').innerHTML = '<thead><tr><th>Страна</th><th>Откр.</th>' + btnHead + '</tr></thead><tbody>' +
         (codes.length ? codes.map(function (code) {
           var r = data.countries[code];
-          return '<tr><td>' + esc(COUNTRY[code] || code) + '</td><td>' + cell(r.views) + '</td><td>' + cell(r.vpn) +
-            '</td><td>' + cell(r.site) + '</td></tr>';
-        }).join('') : '<tr><td colspan="4" class="muted">Пока нет данных</td></tr>') + '</tbody>';
+          return '<tr><td>' + esc(COUNTRY[code] || code) + '</td><td>' + cell(r.views) + '</td>' + btnCells(r) + '</tr>';
+        }).join('') : '<tr><td colspan="' + (2 + buttons.length) + '" class="muted">Пока нет данных</td></tr>') + '</tbody>';
 
       var max = Math.max.apply(null, data.byDay.map(function (d) { return d.views; }).concat(1));
-      $('by-day').innerHTML = '<thead><tr><th>День</th><th class="bar"></th><th>Уник.</th><th>Открытия</th><th>VPN</th><th>Сайт</th></tr></thead><tbody>' +
+      $('by-day').innerHTML = '<thead><tr><th>День</th><th class="bar"></th><th>Уник.</th><th>Откр.</th>' + btnHead + '</tr></thead><tbody>' +
         data.byDay.map(function (d) {
           return '<tr><td>' + dateLabel(d.date) + '</td><td class="bar"><div class="barline" style="width:' +
             (d.views ? Math.max(2, (d.views / max) * 100) : 0) + '%"></div></td><td>' + cell(d.unique) + '</td><td>' +
-            cell(d.views) + '</td><td>' + cell(d.vpn) + '</td><td>' + cell(d.site) + '</td></tr>';
+            cell(d.views) + '</td>' + btnCells(d) + '</tr>';
         }).join('') + '</tbody>';
     }
 
